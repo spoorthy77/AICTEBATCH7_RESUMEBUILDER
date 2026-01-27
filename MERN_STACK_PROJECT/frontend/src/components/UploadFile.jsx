@@ -67,11 +67,11 @@ export default function UploadFile() {
       const fileInput = document.querySelector('input[type="file"]');
       if (fileInput) fileInput.value = '';
 
-      // Clear success message after 5 seconds
+      // Clear success message after 30 seconds
       setTimeout(() => {
         setSuccess("");
         setDistributionDetails(null);
-      }, 5000);
+      }, 30000);
     } catch (err) {
       if (err.code === 'ERR_NETWORK') {
         setError("❌ Cannot connect to server. Please check your connection.");
