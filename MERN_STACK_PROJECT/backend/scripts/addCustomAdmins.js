@@ -4,6 +4,7 @@ require('dotenv').config();
 
 // ✏️ EDIT THIS ARRAY - Add as many demo/admins as you want!
 const newAdmins = [
+  { email: 'spoorthi@gmail.com', password: 'password' },
   { email: 'demo1@example.com', password: 'password123' },
   { email: 'demo2@example.com', password: 'password123' },
   { email: 'demo3@example.com', password: 'password123' },

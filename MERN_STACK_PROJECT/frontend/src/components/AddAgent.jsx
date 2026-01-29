@@ -1,18 +1,17 @@
 // Import the `useState` hook from React for local component state
 import { useState } from "react";
-// Import a pre-configured axios instance for API calls
-import api from "../api/axios";
 // Import component-scoped styles
 import "../styles/components.css";
+import api from "../api/axios";
 
 // Export the AddAgent component as the default export
-export default function AddAgent() {
+export default function AddAgent({ onAgentAdded }) {
   // State: agent name input
   const [name, setName] = useState("");
   // State: agent email input
   const [email, setEmail] = useState("");
-  // State: agent mobile input
-  const [mobile, setMobile] = useState("");
+  // State: agent phone input
+  const [phone, setPhone] = useState("");
   // State: agent password input
   const [password, setPassword] = useState("");
   // State: loading indicator for API request
@@ -34,7 +33,7 @@ export default function AddAgent() {
 
     try {
       // Validate input: ensure all fields are filled
-      if (!name || !email || !mobile || !password) {
+      if (!name || !email || !phone || !password) {
         setError("⚠️ All fields are required!");
         setLoading(false);
         return;
@@ -48,19 +47,19 @@ export default function AddAgent() {
         return;
       }
 
-      // Validate mobile format: simple length check
-      if (mobile.length < 10) {
-        setError("⚠️ Mobile number must be at least 10 digits!");
+      // Validate phone format: simple length check
+      if (phone.length < 10) {
+        setError("⚠️ Phone number must be at least 10 digits!");
         setLoading(false);
         return;
       }
 
-      // Make API request to create a new agent
-      const response = await api.post("/agents", { 
-        name, 
-        email, 
-        mobile, 
-        password 
+      // Make API call to add agent
+      await api.post('/agents', {
+        name,
+        email,
+        phone,
+        password
       });
 
       // On success, show a success message including the agent name
@@ -68,24 +67,22 @@ export default function AddAgent() {
       // Clear the form inputs
       setName("");
       setEmail("");
-      setMobile("");
+      setPhone("");
       setPassword("");
+
+      // Notify parent component to refetch agents
+      if (onAgentAdded) {
+        onAgentAdded();
+      }
 
       // Clear success message after 3 seconds to keep UI clean
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
-      // Network-level error handling
-      if (err.code === 'ERR_NETWORK') {
-        setError("❌ Cannot connect to server. Please check your connection.");
-      // Handle validation errors returned by the API
-      } else if (err.response?.status === 400) {
-        setError("⚠️ " + (err.response?.data?.message || "Invalid data. Please check all fields."));
-      // Handle unauthorized responses
-      } else if (err.response?.status === 401) {
-        setError("❌ Unauthorized. Please login again.");
-      // Fallback error message for other cases
+      console.error('Add agent error:', err);
+      if (err.response?.data?.message) {
+        setError(`❌ ${err.response.data.message}`);
       } else {
-        setError("❌ " + (err.response?.data?.message || "Failed to add agent. Please try again."));
+        setError("❌ Failed to add agent. Please try again.");
       }
     } finally {
       // Ensure loading state is turned off regardless of outcome
@@ -138,17 +135,17 @@ export default function AddAgent() {
           />
         </div>
 
-        {/* Agent mobile input group */}
+        {/* Agent phone input group */}
         <div className="form-group">
-          <label>Mobile Number (with country code):</label>
+          <label>Phone Number (with country code):</label>
           <input
-            // Telephone input for mobile number
+            // Telephone input for phone number
             type="tel"
-            value={mobile}
-            onChange={(e) => setMobile(e.target.value)}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
             placeholder="e.g., +1234567890"
             autoComplete="off"
-            name="agent-mobile"
+            name="agent-phone"
             required
             disabled={loading}
           />

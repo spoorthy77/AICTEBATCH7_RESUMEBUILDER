@@ -1,31 +1,60 @@
+const mongoose = require('mongoose');
 const Agent = require('../models/Agent');
 
 /**
  * Add a new agent
  * POST /api/agents
- * Body: { name, email, mobile, password }
+ * Body: { name, email, phone, password }
  */
 exports.addAgent = async (req, res) => {
   try {
-    const { name, email, mobile, password } = req.body;
+    const { name, email, phone, password } = req.body;
 
-    // Validate input
-    if (!name || !email || !mobile || !password) {
-      return res.status(400).json({ message: "All fields are required" });
+    // Trim inputs
+    const trimmedName = name?.trim();
+    const trimmedEmail = email?.trim();
+    const trimmedPhone = phone?.trim();
+    const trimmedPassword = password?.trim();
+
+    // Validate input: ensure all fields are present and not empty
+    if (!trimmedName || !trimmedEmail || !trimmedPhone || !trimmedPassword) {
+      return res.status(400).json({ message: "All fields are required and cannot be empty" });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      return res.status(400).json({ message: "Please provide a valid email address" });
+    }
+
+    // Validate phone format: simple length check
+    if (trimmedPhone.length < 10) {
+      return res.status(400).json({ message: "Phone number must be at least 10 digits" });
+    }
+
+    // Validate password length
+    if (trimmedPassword.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters long" });
     }
 
     // Check if agent already exists
-    const exists = await Agent.findOne({ email });
+    const exists = await Agent.findOne({ email: trimmedEmail.toLowerCase() });
     if (exists) {
       return res.status(400).json({ message: "Agent already exists with this email" });
     }
 
+    // Validate adminId
+    if (!req.adminId || !mongoose.Types.ObjectId.isValid(req.adminId)) {
+      return res.status(400).json({ message: "Invalid admin ID" });
+    }
+
     // Create new agent
     const agent = new Agent({
-      name,
-      email,
-      mobile,
-      password
+      name: trimmedName,
+      email: trimmedEmail,
+      phone: trimmedPhone,
+      password: trimmedPassword,
+      adminId: new mongoose.Types.ObjectId(req.adminId)
     });
 
     await agent.save();
@@ -35,12 +64,18 @@ exports.addAgent = async (req, res) => {
       _id: agent._id,
       name: agent.name,
       email: agent.email,
-      mobile: agent.mobile,
+      phone: agent.phone,
       message: "Agent added successfully"
     });
   } catch (err) {
     console.error('Add agent error:', err);
-    res.status(500).json({ message: "Server error" });
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({ message: `Validation error: ${err.message}` });
+    }
+    if (err.code === 11000) {
+      return res.status(400).json({ message: "Agent already exists with this email" });
+    }
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -50,7 +85,7 @@ exports.addAgent = async (req, res) => {
  */
 exports.getAgents = async (req, res) => {
   try {
-    const agents = await Agent.find().select('-password');
+    const agents = await Agent.find({ adminId: req.adminId }).select('-password').sort({ updatedAt: -1 });
     res.json(agents);
   } catch (err) {
     console.error('Get agents error:', err);
@@ -76,6 +111,51 @@ exports.getAgentById = async (req, res) => {
 };
 
 /**
+ * Update agent (all fields except password)
+ * PUT /api/agents/:id
+ * Body: { name, email, phone, tasks }
+ */
+exports.updateAgent = async (req, res) => {
+  try {
+    const { name, email, phone, tasks } = req.body;
+
+    // Build update object with only allowed fields
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (email !== undefined) updateData.email = email;
+    if (phone !== undefined) updateData.phone = phone;
+    if (tasks !== undefined) updateData.tasks = tasks;
+
+    // Check if email is being updated and if it already exists
+    if (email !== undefined) {
+      const existingAgent = await Agent.findOne({ email: email.toLowerCase(), _id: { $ne: req.params.id } });
+      if (existingAgent) {
+        return res.status(400).json({ message: "Email already exists for another agent" });
+      }
+    }
+
+    const agent = await Agent.findById(req.params.id);
+    if (!agent) {
+      return res.status(404).json({ message: "Agent not found" });
+    }
+
+    // Update fields
+    if (name !== undefined) agent.name = name;
+    if (email !== undefined) agent.email = email;
+    if (phone !== undefined) agent.phone = phone;
+    if (tasks !== undefined) agent.tasks = tasks;
+
+    // Save to trigger pre-save middleware for updatedAt
+    await agent.save();
+
+    res.json({ agent: { _id: agent._id, name: agent.name, email: agent.email, phone: agent.phone, tasks: agent.tasks, createdAt: agent.createdAt, updatedAt: agent.updatedAt }, message: "Agent updated successfully" });
+  } catch (err) {
+    console.error('Update agent error:', err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+/**
  * Update agent tasks
  * PUT /api/agents/:id/tasks
  * Body: { tasks: [...] }
@@ -88,17 +168,15 @@ exports.updateAgentTasks = async (req, res) => {
       return res.status(400).json({ message: "Tasks must be an array" });
     }
 
-    const agent = await Agent.findByIdAndUpdate(
-      req.params.id,
-      { tasks },
-      { new: true }
-    ).select('-password');
-
+    const agent = await Agent.findById(req.params.id);
     if (!agent) {
       return res.status(404).json({ message: "Agent not found" });
     }
 
-    res.json({ agent, message: "Tasks updated successfully" });
+    agent.tasks = tasks;
+    await agent.save();
+
+    res.json({ agent: { _id: agent._id, name: agent.name, email: agent.email, phone: agent.phone, tasks: agent.tasks, createdAt: agent.createdAt, updatedAt: agent.updatedAt }, message: "Tasks updated successfully" });
   } catch (err) {
     console.error('Update tasks error:', err);
     res.status(500).json({ message: "Server error" });

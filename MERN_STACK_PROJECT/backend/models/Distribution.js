@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const distributionSchema = new mongoose.Schema({
+  adminId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Admin',
+    required: true
+  },
   fileName: {
     type: String,
     required: true

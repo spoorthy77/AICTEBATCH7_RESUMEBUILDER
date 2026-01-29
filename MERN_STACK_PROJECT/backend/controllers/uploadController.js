@@ -56,8 +56,8 @@ exports.uploadFile = async (req, res) => {
       });
     }
 
-    // Step 6: Retrieve all available agents from database
-    const agents = await Agent.find().select('_id name email'); // Fetch agent IDs, names, and emails
+    // Step 6: Retrieve all available agents from database for the current admin
+    const agents = await Agent.find({ adminId: req.adminId }).select('_id name email'); // Fetch agent IDs, names, and emails
 
     // Step 7: Log file upload information for debugging/monitoring
     console.log(`\n📊 File Upload: ${fileName}`);
@@ -98,6 +98,7 @@ exports.uploadFile = async (req, res) => {
 
     // Step 13: Save the distribution record to database for audit trail
     const distribution = new Distribution({
+      adminId: req.adminId,                // Associate with the admin who uploaded
       fileName,                             // Name of uploaded file
       distributions: distributions.map(d => ({
         agentId: d.agentId,                 // ID of agent
@@ -149,8 +150,8 @@ exports.uploadFile = async (req, res) => {
  */
 exports.getDistributions = async (req, res) => {
   try {
-    // Fetch all distributions and sort by upload date (newest first)
-    const distributions = await Distribution.find().sort({ uploadedAt: -1 });
+    // Fetch all distributions for the current admin and sort by upload date (newest first)
+    const distributions = await Distribution.find({ adminId: req.adminId }).sort({ uploadedAt: -1 });
     res.json(distributions);
   } catch (err) {
     // Log error and return 500 status
@@ -168,8 +169,8 @@ exports.getDistributions = async (req, res) => {
  */
 exports.getDistributionById = async (req, res) => {
   try {
-    // Fetch distribution by ID from database
-    const distribution = await Distribution.findById(req.params.id);
+    // Fetch distribution by ID from database for the current admin
+    const distribution = await Distribution.findOne({ _id: req.params.id, adminId: req.adminId });
     
     // Check if distribution exists
     if (!distribution) {

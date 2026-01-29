@@ -4,6 +4,7 @@ const {
   addAgent, 
   getAgents, 
   getAgentById,
+  updateAgent,
   updateAgentTasks,
   deleteAgent
 } = require('../controllers/agentController');
@@ -13,6 +14,7 @@ const auth = require('../middleware/authMiddleware');
 router.post('/', auth, addAgent);
 router.get('/', auth, getAgents);
 router.get('/:id', auth, getAgentById);
+router.put('/:id', auth, updateAgent);
 router.put('/:id/tasks', auth, updateAgentTasks);
 router.delete('/:id', auth, deleteAgent);
 

@@ -2,7 +2,7 @@ import { useState } from "react";
 import api from "../api/axios";
 import "../styles/components.css";
 
-export default function UploadFile() {
+export default function UploadFile({ agents, onTasksDistributed }) {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -46,8 +46,10 @@ export default function UploadFile() {
       return;
     }
 
-    const formData = new FormData();
-    formData.append("file", file);
+    if (agents.length === 0) {
+      setError("No agents available. Please add agents first.");
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -55,12 +57,24 @@ export default function UploadFile() {
     setDistributionDetails(null);
 
     try {
-      const response = await api.post("/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // Send file to backend for processing and distribution
+      const response = await api.post('/upload', formData);
+
+      // Update success message and distribution details from backend response
+      setSuccess(`✅ ${response.data.message}`);
+      setDistributionDetails({
+        distributions: response.data.distributions,
+        totalItems: response.data.totalItems,
+        agentsCount: response.data.agentsCount
       });
-      
-      setSuccess("✅ " + response.data.message);
-      setDistributionDetails(response.data);
+
+      // Refresh agent data from backend to get updated task counts
+      await onTasksDistributed();
+
       setFile(null);
       
       // Clear file input
@@ -73,21 +87,8 @@ export default function UploadFile() {
         setDistributionDetails(null);
       }, 30000);
     } catch (err) {
-      if (err.code === 'ERR_NETWORK') {
-        setError("❌ Cannot connect to server. Please check your connection.");
-      } else if (err.response?.status === 400) {
-        const message = err.response?.data?.message || "Invalid file or data";
-        const errors = err.response?.data?.errors;
-        if (errors && errors.length > 0) {
-          setError(`⚠️ ${message}:\n${errors.join('\n')}`);
-        } else {
-          setError("⚠️ " + message);
-        }
-      } else if (err.response?.status === 401) {
-        setError("❌ Unauthorized. Please login again.");
-      } else {
-        setError("❌ " + (err.response?.data?.message || "Failed to upload file. Please try again."));
-      }
+      const errorMessage = err.response?.data?.message || err.message || "Failed to process file. Please try again.";
+      setError("❌ " + errorMessage);
       console.error("Upload error:", err);
     } finally {
       setLoading(false);

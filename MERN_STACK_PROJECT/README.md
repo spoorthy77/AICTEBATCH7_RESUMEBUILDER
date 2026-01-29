@@ -308,6 +308,28 @@ node scripts/seedAdmin.js
 # Password: admin123
 ```
 
+### Step 5: (Optional) Generate Dummy Agent Data
+
+For testing with a large dataset, you can generate 100 dummy agents:
+
+```bash
+cd backend
+
+# Generate 100 dummy agents with unique data
+node scripts/seedDummyAgents.js
+
+# This will create agents with:
+# - Unique names (realistic first/last name combinations)
+# - Unique emails (name-based with various domains)
+# - Unique phone numbers (US format)
+# - Unique passwords (12-char random strings, auto-hashed)
+
+# Export agent data to CSV for reference
+node scripts/exportAgents.js
+
+# Output: data/dummy-agents.csv with all agent details
+```
+
 ---
 
 ## 🚀 Running the Application
@@ -469,6 +491,15 @@ curl -X POST http://localhost:5000/api/agents \
 3. **Verify distribution:**
    - Check AgentList to see tasks assigned
    - Should see ~3-4 items per agent
+
+### Test with Dummy Agents
+
+If you generated dummy agents using `seedDummyAgents.js`, you can test distribution with 100 agents:
+
+```bash
+# Upload a file with 1000 leads to distribute among 100 agents
+# Each agent should receive ~10 tasks
+```
 
 ### Test with Different File Sizes
 
@@ -771,7 +802,14 @@ This project is provided as-is for educational purposes.
 
 ---
 
-**Last Updated:** January 26, 2026  
+## 📝 Recent Updates
+
+### January 29, 2026
+- **Fixed Mongoose Pre-Save Middleware**: Updated Agent schema pre-save hooks to use modern async patterns without `next()` calls, preventing "next is not a function" errors and ensuring agents save properly to MongoDB.
+
+---
+
+**Last Updated:** January 29, 2026  
 **Version:** 1.0.0
 
 Happy coding! 🚀
