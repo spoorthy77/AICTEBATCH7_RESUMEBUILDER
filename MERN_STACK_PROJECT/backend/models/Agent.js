@@ -12,13 +12,18 @@ const agentSchema = new mongoose.Schema({ // define the Agent schema
     unique: true, // email must be unique across documents
     lowercase: true // store email in lowercase for consistency
   },
-  mobile: { // agent's mobile number
+  phone: { // agent's phone number
     type: String, // stored as a String to preserve formatting
-    required: true // mobile is required
+    required: true // phone is required
   },
   password: { // agent's password (will be hashed before save)
     type: String, // stored as a String
     required: true // password is required
+  },
+  adminId: { // ID of the admin who created this agent
+    type: mongoose.Schema.Types.ObjectId, // reference to Admin model
+    ref: 'Admin', // reference the Admin model
+    required: true // adminId is required
   },
   tasks: [ // array of task objects assigned to the agent
     { // single task entry
@@ -30,6 +35,10 @@ const agentSchema = new mongoose.Schema({ // define the Agent schema
   createdAt: { // timestamp when the agent was created
     type: Date, // stored as Date
     default: Date.now // defaults to current date/time
+  },
+  updatedAt: { // timestamp when the agent was last updated
+    type: Date, // stored as Date
+    default: Date.now // defaults to current date/time
   }
 }); // end of schema definition
 
@@ -38,6 +47,11 @@ agentSchema.pre('save', async function () { // pre-save middleware to hash passw
   if (!this.isModified('password')) return; // skip if password wasn't modified
   const salt = await bcrypt.genSalt(10); // generate a salt with 10 rounds
   this.password = await bcrypt.hash(this.password, salt); // hash and set the password
+});
+
+// Update updatedAt before saving
+agentSchema.pre('save', function () {
+  this.updatedAt = Date.now();
 });
 
 // Method to compare password
