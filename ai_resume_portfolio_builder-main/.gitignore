@@ -88,6 +88,9 @@ generated_resumes/
 *.doc
 uploads/
 
+# Exclude MERN Stack Project (separate project)
+MERN_STACK_PROJECT/
+
 # ============================================
 # Logs
 # ============================================
